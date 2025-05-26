@@ -1,0 +1,157 @@
+﻿using System;
+using System.Windows.Forms;
+
+namespace gacc.Panels
+{
+    public partial class PanelCounterparties : UserControl
+    {
+        public PanelCounterparties()
+        {
+            // инициализация компонента
+            InitializeComponent();
+            // отображение данных с отключенным фильтром
+            ApplyFilter("%");
+        }
+        // фильтрация данных
+        protected void ApplyFilter(string filter)
+        {
+            // загрузить данные в таблицу
+            int rowsLoaded = DBImage.cpta.Fill(dbDataSet.counterparties, filter, filter, filter);
+            tslblCount.Text = rowsLoaded.ToString("00");
+        }
+        // ---------------------------------------------------------
+        private void tstxtFilter_TextChanged(object sender, EventArgs e)
+        {
+            ApplyFilter("%" + tstxtFilter.Text + "%");
+        }
+        // ---------------------------------------------------------
+
+
+        // ---------------------------------------------------------
+        /// <summary>
+        ///  Управление - команды меню
+        /// </summary>
+        // ---------------------------------------------------------
+        int ID;
+        string c_name, c_phone, c_descr, c_contact;
+        private void tsbtnAdd_Click(object sender, EventArgs e)
+        {
+            // создание диалога ввода/редактирования данных
+            Dialogues.DialogCounterParty dialog = new Dialogues.DialogCounterParty();
+            dialog.txtName.Text = "";
+            dialog.txtContact.Text = "";
+            dialog.txtDescription.Text = "";
+            dialog.txtPhone.Text = "";
+            if (dialog.ShowDialog() == DialogResult.OK) // обновление данных
+            {
+                // получение новых данных из диалога
+                c_name = dialog.txtName.Text;
+                c_contact = dialog.txtContact.Text;
+                c_descr = dialog.txtDescription.Text;
+                c_phone = dialog.txtPhone.Text;
+                // обновление данных в БД
+                DBImage.cpta.InsertQuery(c_name, c_descr, c_contact, c_phone);
+                this.dbDataSet.AcceptChanges();
+                ApplyFilter("%");
+            }
+            dialog.Dispose();
+        }
+        // ---------------------------------------------------------
+        private void tsbtnEdit_Click(object sender, EventArgs e)
+        {
+            EditData();
+        }
+        // ---------------------------------------------------------
+        private void dgvData_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            EditData();
+        }
+        // ---------------------------------------------------------
+        protected void EditData()
+        {
+            if (Authorization.Access > 1)
+            {
+                // получение индекса выбранной строки
+                int selected_row = dgvData.SelectedRows[0].Index;
+                if (selected_row >= 0)
+                {
+                    // считывание данных выбранной записи из таблицы
+                    ID = Convert.ToInt32(dgvData.Rows[selected_row].Cells[0].Value);
+                    c_name = dgvData.Rows[selected_row].Cells[2].Value.ToString();
+                    c_contact = dgvData.Rows[selected_row].Cells[1].Value.ToString();
+                    c_descr = dgvData.Rows[selected_row].Cells[4].Value.ToString();
+                    c_phone = dgvData.Rows[selected_row].Cells[3].Value.ToString();
+                    // создание диалога ввода/редактирования данных
+                    Dialogues.DialogCounterParty dialog = new Dialogues.DialogCounterParty();
+                    dialog.txtName.Text = c_name;
+                    dialog.txtContact.Text = c_contact;
+                    dialog.txtDescription.Text = c_descr;
+                    dialog.txtPhone.Text = c_phone;
+                    if (dialog.ShowDialog() == DialogResult.OK) // обновление данных
+                    {
+                        // получение новых данных из диалога
+                        c_name = dialog.txtName.Text;
+                        c_contact = dialog.txtContact.Text;
+                        c_descr = dialog.txtDescription.Text;
+                        c_phone = dialog.txtPhone.Text;
+                        // обновление данных в БД
+                        DBImage.cpta.UpdateQuery(c_name, c_descr, c_contact, c_phone, ID);
+                        this.dbDataSet.AcceptChanges();
+                        ApplyFilter("%");
+                    }
+                    dialog.Dispose();
+                }                
+            }
+            else
+            {
+                MessageBox.Show("У вас недостаточно прав для совершения данного действия!",
+                    Application.ProductName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
+            }
+        }
+        // ---------------------------------------------------------
+        private void tsbtnDelete_Click(object sender, EventArgs e)
+        {
+            if (Authorization.Access > 2)
+            {
+                // получение индекса выбранной строки
+                int selected_row = dgvData.SelectedRows[0].Index;
+                if (selected_row >= 0)
+                {
+                    ID = Convert.ToInt32(dgvData.Rows[selected_row].Cells[0].Value);
+                    if (ID == 5)
+                    {
+                        MessageBox.Show("Данный клиент является фиктивным и указывается для неидентифицированных клиентов. Его удаление невозможно!",
+                            Application.ProductName,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Exclamation);
+                        return;
+                    }
+                    if (MessageBox.Show("Удалить выбранную запись ?", Application.ProductName,
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        // удаление записи из БД
+                        DBImage.cpta.DeleteQuery(ID);
+                        dbDataSet.AcceptChanges();
+                        ApplyFilter("%");
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("У вас недостаточно прав для совершения данного действия!",
+                    Application.ProductName,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Exclamation);
+            }
+        }
+        // ---------------------------------------------------------
+        private void tsbtnStatistic_Click(object sender, EventArgs e)
+        {
+            WindowCounterpartySummary wcs = new WindowCounterpartySummary();
+            wcs.ShowDialog();
+        }
+        // ---------------------------------------------------------
+    }
+}
